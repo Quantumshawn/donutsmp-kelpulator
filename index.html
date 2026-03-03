@@ -565,6 +565,7 @@
     let _orderCache = null;
     let _cacheTime = 0;
     let _isFetching = false;
+    let _fetchError = null;
     const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
     const liveDot = document.getElementById('liveDot');
@@ -612,6 +613,7 @@
         liveDot.className = 'live-dot error';
         liveAge.textContent = 'Failed to fetch';
         console.error('Price fetch error:', err);
+        _fetchError = err.message;
       } finally {
         _isFetching = false;
       }
@@ -705,7 +707,7 @@
           statusEl.innerHTML = `<span class="spinner"></span> Waiting for price data…`;
           await refreshPrices();
         }
-        if (!_orderCache) throw new Error('Could not fetch market data. Try again.');
+        if (!_orderCache) throw new Error(_fetchError ? `API error: ${_fetchError}` : 'Could not fetch market data. Try again.');
 
         const orders = _orderCache;
 
