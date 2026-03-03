@@ -430,28 +430,30 @@
     }
 
     .copy-btn {
-      background: var(--surface-3);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text-muted);
-      font-size: 13px;
-      padding: 2px 7px;
+      background: none;
+      border: none;
+      padding: 0 0 0 6px;
       cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-      line-height: 1.4;
-      font-family: inherit;
+      opacity: 0.45;
+      transition: opacity 0.15s;
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
     }
 
     .copy-btn:hover {
-      background: var(--border);
-      color: var(--text);
-      border-color: var(--border-hover);
+      opacity: 1;
     }
 
-    .copy-btn.copied {
-      background: var(--green-dim);
-      color: var(--green);
-      border-color: var(--green);
+    .copy-btn img {
+      width: 15px;
+      height: 15px;
+      display: block;
+      filter: invert(1);
+    }
+
+    .copy-btn.copied img {
+      filter: invert(74%) sepia(60%) saturate(400%) hue-rotate(90deg) brightness(110%);
     }
 
     /* ── Override toggle ── */
@@ -904,14 +906,14 @@
 
         // Bone Blocks
         document.getElementById('boneRows').innerHTML = buildRows([
-          { label: 'Price', dot: '#60a5fa', value: fmtPrice(bonePrice) },
+          { label: 'Price', dot: '#60a5fa', value: fmtPrice(bonePrice), copy: bonePrice.toFixed(2) },
           { label: 'Amount', dot: '#60a5fa', value: fmt(result.B), copy: String(result.B) },
           { label: 'Cost', dot: '#60a5fa', value: fmtCompact(result.B * bonePrice) },
         ]);
 
         // Blaze Rods
         document.getElementById('blazeRows').innerHTML = buildRows([
-          { label: 'Price', dot: '#fb923c', value: fmtPrice(blazePrice) },
+          { label: 'Price', dot: '#fb923c', value: fmtPrice(blazePrice), copy: blazePrice.toFixed(2) },
           { label: 'Amount', dot: '#fb923c', value: fmt(result.R), copy: String(result.R) },
           { label: 'Cost', dot: '#fb923c', value: fmtCompact(result.R * blazePrice) },
         ]);
@@ -961,7 +963,7 @@
           </span>
           <span class="summary-value-wrap">
             <span class="summary-value">${value}</span>
-            ${copy != null ? `<button class="copy-btn" onclick="copyVal(this, '${copy}')" title="Copy">⎘</button>` : ''}
+            ${copy != null ? `<button class="copy-btn" onclick="copyVal(this, '${copy}')" title="Copy"><img src="copy-link.png" alt="copy"></button>` : ''}
           </span>
         </div>
       `).join('');
@@ -969,9 +971,8 @@
 
     function copyVal(btn, text) {
       navigator.clipboard.writeText(text).then(() => {
-        btn.textContent = '✓';
         btn.classList.add('copied');
-        setTimeout(() => { btn.textContent = '⎘'; btn.classList.remove('copied'); }, 1500);
+        setTimeout(() => btn.classList.remove('copied'), 1500);
       });
     }
   </script>
