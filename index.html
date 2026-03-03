@@ -456,6 +456,10 @@
   <div class="card">
     <div class="card-title">Configuration</div>
     <div class="field">
+      <label for="apiKey">API Key</label>
+      <input type="password" id="apiKey" placeholder="Get yours in-game with /api" autocomplete="off" />
+    </div>
+    <div class="field">
       <label for="budget">Budget</label>
       <input type="text" id="budget" placeholder="e.g. 100m, 648k, 2.45b" autocomplete="off" />
     </div>
@@ -561,60 +565,76 @@
       return sign + '$' + fmt(abs);
     }
 
-    // ─── API (auto-refresh every 30 min) ───
-    let _orderCache = null;
+    // ─── API (official DonutSMP API) ───
+    // Uses api.donutsmp.net with Bearer token from /api in-game
+    let _prices = null;       // { bone, kelp }
     let _cacheTime = 0;
     let _isFetching = false;
     let _fetchError = null;
     let _fetchPromise = null;
-    const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-    const CACHE_KEY = 'kelpulator_cache';
+    const CACHE_TTL = 30 * 60 * 1000;
+    const KEY_STORE = 'kelpulator_apikey';
+    const PRICE_STORE = 'kelpulator_prices';
 
     const liveDot = document.getElementById('liveDot');
     const liveAge = document.getElementById('liveAge');
+    const apiKeyInput = document.getElementById('apiKey');
 
-    // Load cache from localStorage on startup
+    // Restore saved API key
+    const savedKey = localStorage.getItem(KEY_STORE) || '';
+    if (savedKey) apiKeyInput.value = savedKey;
+
+    // Restore cached prices
     try {
-      const saved = localStorage.getItem(CACHE_KEY);
+      const saved = localStorage.getItem(PRICE_STORE);
       if (saved) {
-        const { orders, time } = JSON.parse(saved);
+        const { prices, time } = JSON.parse(saved);
         if (Date.now() - time < CACHE_TTL) {
-          _orderCache = orders;
+          _prices = prices;
           _cacheTime = time;
-          updateLivePrices(orders);
+          updateLivePrices(prices);
           liveDot.className = 'live-dot active';
           updateAge();
         }
       }
     } catch (e) { /* ignore */ }
 
-    async function fetchAllOrdersRaw() {
-      const allOrders = [];
-      let cursor = '';
-      let page = 0;
-
-      while (true) {
-        page++;
-        const resp = await fetch(`https://api.donut.auction/orders?cursor=${cursor}`);
-        if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+    async function fetchItemPrice(apiKey, searchTerm) {
+      // Scan auction pages for the item, pick highest price listing
+      for (let page = 1; page <= 50; page++) {
+        const resp = await fetch(`https://api.donutsmp.net/v1/auction/list/${page}`, {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+        });
+        if (!resp.ok) {
+          if (resp.status === 401) throw new Error('Invalid API key. Get yours in-game with /api');
+          throw new Error(`API error ${resp.status}`);
+        }
         const data = await resp.json();
-        allOrders.push(...data.orders);
-        if (!data.nextCursor) break;
-        cursor = data.nextCursor;
+        if (!data.result || data.result.length === 0) break;
+
+        let highest = 0;
+        for (const entry of data.result) {
+          if (entry.item?.id?.toLowerCase() === searchTerm) {
+            if (entry.price > highest) highest = entry.price;
+          }
+        }
+        if (highest > 0) return highest;
       }
-
-      return allOrders;
-    }
-
-    function updateLivePrices(orders) {
-      const highestBone = getHighestOrderPrice(orders, 'bone_block');
-      const highestKelp = getHighestOrderPrice(orders, 'dried_kelp_block');
-      document.getElementById('liveBone').textContent = highestBone > 0 ? fmtPrice(highestBone) : '—';
-      document.getElementById('liveKelp').textContent = highestKelp > 0 ? fmtPrice(highestKelp) : '—';
+      return 0;
     }
 
     async function refreshPrices() {
       if (_isFetching) return _fetchPromise;
+
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        liveDot.className = 'live-dot error';
+        liveAge.textContent = 'No API key';
+        return Promise.resolve();
+      }
+
+      localStorage.setItem(KEY_STORE, apiKey);
+
       _isFetching = true;
       _fetchError = null;
       liveDot.className = 'live-dot fetching';
@@ -622,29 +642,37 @@
 
       _fetchPromise = (async () => {
         try {
-          const orders = await fetchAllOrdersRaw();
-          _orderCache = orders;
+          liveAge.textContent = 'Fetching bone blocks…';
+          const bone = await fetchItemPrice(apiKey, 'bone_block');
+          liveAge.textContent = 'Fetching dried kelp…';
+          const kelp = await fetchItemPrice(apiKey, 'dried_kelp_block');
+
+          _prices = { bone, kelp };
           _cacheTime = Date.now();
 
-          // Persist to localStorage so next page load uses cached data
           try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({ orders, time: _cacheTime }));
-          } catch (e) { /* storage full, ignore */ }
+            localStorage.setItem(PRICE_STORE, JSON.stringify({ prices: _prices, time: _cacheTime }));
+          } catch (e) { /* storage full */ }
 
-          updateLivePrices(orders);
+          updateLivePrices(_prices);
           liveDot.className = 'live-dot active';
           updateAge();
         } catch (err) {
           liveDot.className = 'live-dot error';
-          liveAge.textContent = 'Failed to fetch';
-          console.error('Price fetch error:', err);
+          liveAge.textContent = 'Failed';
           _fetchError = err.message;
+          console.error(err);
         } finally {
           _isFetching = false;
         }
       })();
 
       return _fetchPromise;
+    }
+
+    function updateLivePrices(prices) {
+      document.getElementById('liveBone').textContent = prices.bone > 0 ? fmtPrice(prices.bone) : '—';
+      document.getElementById('liveKelp').textContent = prices.kelp > 0 ? fmtPrice(prices.kelp) : '—';
     }
 
     function updateAge() {
@@ -654,24 +682,14 @@
       else liveAge.textContent = `Updated ${Math.floor(ago / 60)}m ago`;
     }
 
-    // Auto-refresh on load + every 30 min
-    refreshPrices();
-    setInterval(refreshPrices, CACHE_TTL);
-    setInterval(updateAge, 10000); // update age display every 10s
-
-    function getHighestOrderPrice(orders, itemId) {
-      // Active = not fully filled, not expired, at least 1,000 remaining
-      const now = Date.now();
-      let highest = 0;
-      for (const o of orders) {
-        if (o.item.itemId !== itemId) continue;
-        if (o.expirationDate && new Date(o.expirationDate).getTime() < now) continue;
-        const remaining = o.amountOrdered - o.amountDelivered;
-        if (remaining < 1000) continue;
-        if (o.itemPrice > highest) highest = o.itemPrice;
-      }
-      return highest;
-    }
+    // Auto-refresh when API key is entered and every 30 min
+    apiKeyInput.addEventListener('change', () => {
+      _prices = null;
+      if (apiKeyInput.value.trim()) refreshPrices();
+    });
+    if (savedKey) refreshPrices();
+    setInterval(() => { if (apiKeyInput.value.trim()) refreshPrices(); }, CACHE_TTL);
+    setInterval(updateAge, 10000);
 
     // ─── Calculation ───
     //
@@ -734,30 +752,28 @@
       statusEl.className = 'status';
 
       try {
+        // Ensure we have an API key
+        if (!apiKeyInput.value.trim()) throw new Error('Please enter your API key (get it in-game with /api).');
+
         // If a fetch is in progress, wait for it. Otherwise start one if no cache.
         if (_isFetching) {
           statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
           await _fetchPromise;
-        } else if (!_orderCache) {
+        } else if (!_prices) {
           statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
           await refreshPrices();
         }
-        if (!_orderCache) throw new Error(_fetchError ? `API error: ${_fetchError}` : 'Could not fetch market data. Try again.');
-
-        const orders = _orderCache;
+        if (!_prices) throw new Error(_fetchError ? `API error: ${_fetchError}` : 'Could not fetch market data. Try again.');
 
         statusEl.innerHTML = `<span class="spinner"></span> Crunching numbers…`;
 
         // Prices
-        const highestBone = getHighestOrderPrice(orders, 'bone_block');
-        const highestKelp = getHighestOrderPrice(orders, 'dried_kelp_block');
+        if (_prices.bone === 0) throw new Error('No bone block orders found on the market.');
+        if (_prices.kelp === 0) throw new Error('No dried kelp block orders found on the market.');
 
-        if (highestBone === 0) throw new Error('No bone block orders found on the market.');
-        if (highestKelp === 0) throw new Error('No dried kelp block orders found on the market.');
-
-        const bonePrice = highestBone + 6.66;
+        const bonePrice = _prices.bone + 6.66;
         const blazePrice = 156.66;
-        const kelpPrice = highestKelp;
+        const kelpPrice = _prices.kelp;
 
         // Calculate
         const result = calculate(budget, bonePrice, blazePrice, kelpPrice);
