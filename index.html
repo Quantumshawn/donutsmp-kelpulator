@@ -423,6 +423,37 @@
       text-decoration: underline;
     }
 
+    .summary-value-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .copy-btn {
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 2px 7px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      line-height: 1.4;
+      font-family: inherit;
+    }
+
+    .copy-btn:hover {
+      background: var(--border);
+      color: var(--text);
+      border-color: var(--border-hover);
+    }
+
+    .copy-btn.copied {
+      background: var(--green-dim);
+      color: var(--green);
+      border-color: var(--green);
+    }
+
     /* ── Override toggle ── */
     .override-toggle {
       display: flex;
@@ -870,23 +901,19 @@
         if (result.B <= 0) throw new Error('Budget too low to purchase any materials.');
 
         const SHULKER = 1728;
-        const boneShulkers = (result.B / SHULKER).toFixed(1);
-        const blazeShulkers = (result.R / SHULKER).toFixed(1);
 
         // Bone Blocks
         document.getElementById('boneRows').innerHTML = buildRows([
           { label: 'Price', dot: '#60a5fa', value: fmtPrice(bonePrice) },
-          { label: 'Amount', dot: '#60a5fa', value: fmt(result.B) },
-          { label: 'Shulkers', dot: '#60a5fa', value: boneShulkers },
-          { label: 'Cost', dot: '#60a5fa', value: fmtPrice(result.B * bonePrice) },
+          { label: 'Amount', dot: '#60a5fa', value: fmt(result.B), copy: String(result.B) },
+          { label: 'Cost', dot: '#60a5fa', value: fmtCompact(result.B * bonePrice) },
         ]);
 
         // Blaze Rods
         document.getElementById('blazeRows').innerHTML = buildRows([
           { label: 'Price', dot: '#fb923c', value: fmtPrice(blazePrice) },
-          { label: 'Amount', dot: '#fb923c', value: fmt(result.R) },
-          { label: 'Shulkers', dot: '#fb923c', value: blazeShulkers },
-          { label: 'Cost', dot: '#fb923c', value: fmtPrice(result.R * blazePrice) },
+          { label: 'Amount', dot: '#fb923c', value: fmt(result.R), copy: String(result.R) },
+          { label: 'Cost', dot: '#fb923c', value: fmtCompact(result.R * blazePrice) },
         ]);
 
         // Dried Kelp Blocks
@@ -895,7 +922,6 @@
           { label: 'Sell Price', dot: '#4ade80', value: fmtPrice(kelpPrice) },
           { label: 'Amount Produced', dot: '#4ade80', value: fmt(result.driedKelpBlocks) },
           { label: 'Shulkers', dot: '#4ade80', value: kelpShulkers },
-          { label: 'Revenue', dot: '#4ade80', value: fmtPrice(result.revenue) },
         ]);
 
         // Revenue
@@ -927,15 +953,26 @@
     }
 
     function buildRows(items) {
-      return items.map(({ label, dot, value }) => `
+      return items.map(({ label, dot, value, copy }) => `
         <div class="summary-row">
           <span class="summary-label">
             <span class="dot" style="background:${dot}"></span>
             ${label}
           </span>
-          <span class="summary-value">${value}</span>
+          <span class="summary-value-wrap">
+            <span class="summary-value">${value}</span>
+            ${copy != null ? `<button class="copy-btn" onclick="copyVal(this, '${copy}')" title="Copy">⎘</button>` : ''}
+          </span>
         </div>
       `).join('');
+    }
+
+    function copyVal(btn, text) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = '✓';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '⎘'; btn.classList.remove('copied'); }, 1500);
+      });
     }
   </script>
 
