@@ -3,15 +3,17 @@
 A clean, single-page web calculator for optimizing kelp farm profitability on [DonutSMP](https://donutsmp.net).
 
 ## 🔗 Live Site
-<!-- Update this after deploying -->
-> Coming soon
+
+**[donutsmp-kelpulator.vercel.app](https://donutsmp-kelpulator.vercel.app)**
 
 ## ✨ Features
 
-- **Live market prices** — automatically fetches current order prices from [donut.auction](https://donut.auction) on page load and refreshes every 30 minutes
-- **Optimal ratio calculator** — computes the perfect bone block to blaze rod ratio so no resources are wasted
-- **Shulker counts** — shows how many shulkers of each item you need to buy/will produce
-- **Revenue & profit** — instant breakdown of costs, revenue, and % return on investment
+- **Live order prices** — fetches current buy order prices from [donut.auction](https://donut.auction) on page load, refreshes every 30 minutes, and caches to localStorage
+- **Optimal ratio calculator** — computes the perfect bone block to blaze rod ratio so no kelp goes unsmelted and no fuel is wasted
+- **Shulker counts** — shows how many shulkers of each item you'll produce
+- **Revenue & profit** — full breakdown of costs, revenue, and % return on investment
+- **Copy buttons** — copy amounts and prices directly (no commas, ready to paste in-game)
+- **Manual price override** — toggle on to enter your own prices for more accurate calculations
 - **Smart budget input** — supports abbreviations like `100m`, `648k`, `2.45b`
 
 ## 🧮 How It Works
@@ -25,32 +27,46 @@ A clean, single-page web calculator for optimizing kelp farm profitability on [D
 | 9 Dried Kelp | → 1 Dried Kelp Block |
 
 ### Optimal Ratio
-To ensure no kelp goes unsmelted (and no fuel is wasted):
+To ensure no kelp goes unsmelted and no fuel is wasted:
 
 ```
 9 × (Bone Blocks) = 12 × (Blaze Rods)
 → Bone Blocks / Blaze Rods = 4 / 3
+→ B = floor(budget / (bonePrice + 0.75 × blazePrice))
+→ R = floor(3 × B / 4)
 ```
 
 ### Pricing
-- **Bone Blocks** — highest current order price + $6.66
-- **Blaze Rods** — fixed at $156.66
-- **Dried Kelp Blocks** — highest current order price (sell price)
+| Item | Price Source |
+|------|-------------|
+| Bone Blocks | Highest buy order (≥1,000 qty, non-expired) + $6.66 |
+| Blaze Rods | Fixed at $156.66 |
+| Dried Kelp Blocks | Highest buy order (≥1,000 qty, non-expired) |
 
-## 🚀 Usage
+## 🚀 Running Locally
 
-Just open `index.html` in a browser — no build step, no dependencies, no API key required.
+No build step or dependencies — just open the file:
 
-Or run locally with:
+```powershell
+Start-Process "index.html"
+```
+
+Or serve it properly (required for the copy icon to load):
+
 ```bash
 python -m http.server 8080
 ```
+
 Then visit [http://localhost:8080](http://localhost:8080).
 
 ## 📡 Data Source
 
-Market data is provided by the [donut.auction Public API](https://donut.auction/api).  
-Per their terms of use, attribution is included on the page.
+Market data from the [donut.auction](https://donut.auction) public API — no authentication required.  
+Only orders with ≥1,000 remaining quantity and no expiration are considered, to filter out stale/outlier listings.
+
+## ☕ Support
+
+If this saves you money on DonutSMP, consider [buying Shawn a coffee](https://ko-fi.com/shawnthellama)!
 
 ## 📄 License
 
