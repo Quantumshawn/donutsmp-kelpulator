@@ -423,6 +423,74 @@
       text-decoration: underline;
     }
 
+    /* ── Override toggle ── */
+    .override-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .override-toggle span {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .toggle {
+      width: 36px;
+      height: 20px;
+      border-radius: 100px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      position: relative;
+      transition: background 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .toggle.on {
+      background: var(--accent-dim);
+      border-color: var(--accent-dim);
+    }
+
+    .toggle.on::after {
+      transform: translateX(16px);
+      background: #fff;
+    }
+
+    .override-fields {
+      display: none;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .override-fields.visible {
+      display: block;
+    }
+
+    .field-hint {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 560px) {
       body {
@@ -458,6 +526,24 @@
     <div class="field">
       <label for="budget">Budget</label>
       <input type="text" id="budget" placeholder="e.g. 100m, 648k, 2.45b" autocomplete="off" />
+    </div>
+    <div class="override-toggle" id="overrideToggle">
+      <span>Override prices manually</span>
+      <div class="toggle" id="toggleSwitch" role="switch" aria-checked="false" tabindex="0"></div>
+    </div>
+    <div class="override-fields" id="overrideFields">
+      <div class="field">
+        <label for="overrideBone">Bone Block price <span class="field-hint">per block</span></label>
+        <input type="text" id="overrideBone" placeholder="leave blank to use live price" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="overrideBlaze">Blaze Rod price <span class="field-hint">per rod</span></label>
+        <input type="text" id="overrideBlaze" placeholder="leave blank to use $156.66" autocomplete="off" />
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="overrideKelp">Dried Kelp Block price <span class="field-hint">per block</span></label>
+        <input type="text" id="overrideKelp" placeholder="leave blank to use live price" autocomplete="off" />
+      </div>
     </div>
   </div>
 
@@ -709,8 +795,25 @@
     const statusEl = document.getElementById('status');
     const resultsEl = document.getElementById('results');
 
-    calcBtn.addEventListener('click', run);
+    // Override toggle
+    const toggleSwitch = document.getElementById('toggleSwitch');
+    const overrideFields = document.getElementById('overrideFields');
+    const overrideToggle = document.getElementById('overrideToggle');
+    let overrideOn = false;
+
+    function setOverride(on) {
+      overrideOn = on;
+      toggleSwitch.classList.toggle('on', on);
+      toggleSwitch.setAttribute('aria-checked', String(on));
+      overrideFields.classList.toggle('visible', on);
+    }
+
+    overrideToggle.addEventListener('click', () => setOverride(!overrideOn));
+    toggleSwitch.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setOverride(!overrideOn); }
+    });
     budgetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
+    calcBtn.addEventListener('click', run);
 
     async function run() {
       // Parse budget
@@ -721,30 +824,45 @@
         return;
       }
 
+      // Parse override prices (if toggle is on)
+      const ovBone  = overrideOn ? parseMoney(document.getElementById('overrideBone').value)  : NaN;
+      const ovBlaze = overrideOn ? parseMoney(document.getElementById('overrideBlaze').value) : NaN;
+      const ovKelp  = overrideOn ? parseMoney(document.getElementById('overrideKelp').value)  : NaN;
+
+      // Only fetch live prices if we still need them
+      const needLive = !overrideOn || isNaN(ovBone) || isNaN(ovKelp);
+
       calcBtn.disabled = true;
       resultsEl.classList.remove('visible');
       statusEl.className = 'status';
 
       try {
-        // If a fetch is in progress, wait for it. Otherwise start one if no cache.
-        if (_isFetching) {
-          statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
-          await _fetchPromise;
-        } else if (!_prices) {
-          statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
-          await refreshPrices();
+        if (needLive) {
+          if (_isFetching) {
+            statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
+            await _fetchPromise;
+          } else if (!_prices) {
+            statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
+            await refreshPrices();
+          }
+          if (!_prices) throw new Error(_fetchError ? `API error: ${_fetchError}` : 'Could not fetch market data. Try again.');
         }
-        if (!_prices) throw new Error(_fetchError ? `API error: ${_fetchError}` : 'Could not fetch market data. Try again.');
 
         statusEl.innerHTML = `<span class="spinner"></span> Crunching numbers…`;
 
-        // Prices
-        if (_prices.bone === 0) throw new Error('No bone block orders found on the market.');
-        if (_prices.kelp === 0) throw new Error('No dried kelp block orders found on the market.');
+        // Resolve final prices — manual overrides take precedence, live prices as fallback
+        const liveBone = _prices?.bone ?? 0;
+        const liveKelp = _prices?.kelp ?? 0;
 
-        const bonePrice = _prices.bone + 6.66;
-        const blazePrice = 156.66;
-        const kelpPrice = _prices.kelp;
+        const boneMarket = (overrideOn && !isNaN(ovBone)) ? ovBone  : liveBone;
+        const kelpPrice  = (overrideOn && !isNaN(ovKelp)) ? ovKelp  : liveKelp;
+        const blazePrice = (overrideOn && !isNaN(ovBlaze)) ? ovBlaze : 156.66;
+
+        if (boneMarket === 0) throw new Error('No bone block price available. Enter one manually or wait for live prices.');
+        if (kelpPrice  === 0) throw new Error('No dried kelp block price available. Enter one manually or wait for live prices.');
+
+        // Add $6.66 listing fee only when using the live market price (not manual override)
+        const bonePrice = boneMarket + ((overrideOn && !isNaN(ovBone)) ? 0 : 6.66);
 
         // Calculate
         const result = calculate(budget, bonePrice, blazePrice, kelpPrice);
