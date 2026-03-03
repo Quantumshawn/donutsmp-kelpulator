@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DonutSMP Kelp Farm Calculator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0a0a0b;
+      --surface: #131316;
+      --surface-2: #1a1a1f;
+      --surface-3: #222228;
+      --border: #2a2a32;
+      --border-hover: #3a3a44;
+      --text: #ededef;
+      --text-secondary: #8e8e96;
+      --text-muted: #5a5a64;
+      --accent: #c084fc;
+      --accent-dim: #a855f7;
+      --accent-glow: rgba(168, 85, 247, 0.15);
+      --green: #4ade80;
+      --green-dim: rgba(74, 222, 128, 0.1);
+      --red: #f87171;
+      --blue: #60a5fa;
+      --orange: #fb923c;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 80px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .header .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-glow);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 100px;
+      margin-bottom: 16px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--text), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      margin-top: 8px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 520px;
+      padding: 32px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s;
+    }
+
+    .live-dot.active {
+      background: var(--green);
+      box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .live-dot.fetching {
+      background: var(--orange);
+      animation: pulse-dot 0.8s ease-in-out infinite;
+    }
+
+    .live-dot.error {
+      background: var(--red);
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .live-age {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-muted);
+      letter-spacing: 0;
+      text-transform: none;
+      margin-left: auto;
+    }
+
+    /* ── Inputs ── */
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .field input:focus {
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%;
+      padding: 14px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent-dim), #7c3aed);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      margin-top: 8px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Status ── */
+    .status {
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 12px;
+      min-height: 20px;
+    }
+
+    .status.error {
+      color: var(--red);
+    }
+
+    .status .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── Results ── */
+    .results {
+      width: 100%;
+      max-width: 520px;
+      display: none;
+    }
+
+    .results.visible {
+      display: block;
+      animation: fadeUp 0.4s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .results .card {
+      margin-bottom: 16px;
+    }
+
+    /* ── Market Prices ── */
+    .prices-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .price-item {
+      background: var(--surface-2);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      text-align: center;
+    }
+
+    .price-item .item-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .price-item .item-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .price-item .item-price {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .price-item .item-source {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Summary row ── */
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .summary-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .summary-row:first-child {
+      padding-top: 0;
+    }
+
+    .summary-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-label .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .summary-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Profit highlight ── */
+    .profit-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      text-align: center;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .profit-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    .profit-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    .profit-amount {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .profit-amount.positive {
+      color: var(--green);
+    }
+
+    .profit-amount.negative {
+      color: var(--red);
+    }
+
+    .profit-sub {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .profit-sub span {
+      font-weight: 600;
+    }
+
+    .profit-sub .positive {
+      color: var(--green);
+    }
+
+    .profit-sub .negative {
+      color: var(--red);
+    }
+
+    /* ── Attribution ── */
+    .attribution {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .attribution a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .attribution a:hover {
+      text-decoration: underline;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 560px) {
+      body {
+        padding: 24px 16px 60px;
+      }
+      .card {
+        padding: 24px;
+      }
+      .header h1 {
+        font-size: 28px;
+      }
+      .prices-grid {
+        grid-template-columns: 1fr;
+      }
+      .profit-amount {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">🌿 Kelp Farm Calculator</div>
+    <h1>DonutSMP Kelp Farms</h1>
+    <p>Calculate the optimal bone block &amp; blaze rod ratio for maximum profit.</p>
+  </div>
+
+  <!-- Input Card -->
+  <div class="card">
+    <div class="card-title">Configuration</div>
+    <div class="field">
+      <label for="budget">Budget</label>
+      <input type="text" id="budget" placeholder="e.g. 100m, 648k, 2.45b" autocomplete="off" />
+    </div>
+  </div>
+
+  <!-- Live Prices Bar -->
+  <div class="card" id="livePricesCard">
+    <div class="card-title">
+      Live Prices
+      <span class="live-dot" id="liveDot"></span>
+      <span class="live-age" id="liveAge"></span>
+    </div>
+    <div class="prices-grid">
+      <div class="price-item">
+        <div class="item-icon">🦴</div>
+        <div class="item-name">Bone Block</div>
+        <div class="item-price" id="liveBone">—</div>
+        <div class="item-source">highest order</div>
+      </div>
+      <div class="price-item">
+        <div class="item-icon">🔥</div>
+        <div class="item-name">Blaze Rod</div>
+        <div class="item-price" id="liveBlaze">$156.66</div>
+        <div class="item-source">fixed price</div>
+      </div>
+      <div class="price-item">
+        <div class="item-icon">🌿</div>
+        <div class="item-name">Dried Kelp</div>
+        <div class="item-price" id="liveKelp">—</div>
+        <div class="item-source">highest order</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" id="calcBtn" style="max-width:520px;width:100%;">Calculate</button>
+  <div class="status" id="status"></div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+
+    <!-- Bone Blocks -->
+    <div class="card">
+      <div class="card-title">🦴 Bone Blocks</div>
+      <div id="boneRows"></div>
+    </div>
+
+    <!-- Blaze Rods -->
+    <div class="card">
+      <div class="card-title">🔥 Blaze Rods</div>
+      <div id="blazeRows"></div>
+    </div>
+
+    <!-- Dried Kelp Blocks -->
+    <div class="card">
+      <div class="card-title">🌿 Dried Kelp Blocks</div>
+      <div id="kelpRows"></div>
+    </div>
+
+    <!-- Profit -->
+    <div class="profit-section visible-inline">
+      <div class="profit-label">Estimated Revenue</div>
+      <div class="profit-amount" id="revenueAmount">—</div>
+      <div class="profit-sub" id="revenueSub"></div>
+      <div class="profit-divider"></div>
+      <div class="profit-label">Estimated Profit</div>
+      <div class="profit-amount" id="profitAmount">—</div>
+      <div class="profit-sub" id="profitSub"></div>
+    </div>
+  </div>
+
+  <!-- Attribution -->
+  <div class="attribution">
+    Market data from <a href="https://donut.auction" target="_blank" rel="noopener">donut.auction</a>
+  </div>
+
+  <script>
+    // ─── Helpers ───
+    function parseMoney(str) {
+      if (!str) return NaN;
+      str = str.trim().replace(/,/g, '').toLowerCase();
+      const multipliers = { k: 1e3, m: 1e6, b: 1e9 };
+      const match = str.match(/^([\d.]+)\s*([kmb])?$/);
+      if (!match) return NaN;
+      const num = parseFloat(match[1]);
+      const mult = match[2] ? multipliers[match[2]] : 1;
+      return num * mult;
+    }
+
+    function fmt(n) {
+      return Math.floor(n).toLocaleString('en-US');
+    }
+
+    function fmtPrice(n) {
+      return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtCompact(n) {
+      const abs = Math.abs(n);
+      const sign = n < 0 ? '-' : '';
+      if (abs >= 1e9) return sign + '$' + (abs / 1e9).toFixed(2) + 'B';
+      if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(2) + 'M';
+      if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(1) + 'K';
+      return sign + '$' + fmt(abs);
+    }
+
+    // ─── API (auto-refresh every 30 min) ───
+    let _orderCache = null;
+    let _cacheTime = 0;
+    let _isFetching = false;
+    const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+    const liveDot = document.getElementById('liveDot');
+    const liveAge = document.getElementById('liveAge');
+
+    async function fetchAllOrdersRaw() {
+      const allOrders = [];
+      let cursor = '';
+      let page = 0;
+
+      while (true) {
+        page++;
+        const resp = await fetch(`https://api.donut.auction/orders?cursor=${cursor}`);
+        if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+        const data = await resp.json();
+        allOrders.push(...data.orders);
+        if (!data.nextCursor) break;
+        cursor = data.nextCursor;
+      }
+
+      return allOrders;
+    }
+
+    async function refreshPrices() {
+      if (_isFetching) return;
+      _isFetching = true;
+      liveDot.className = 'live-dot fetching';
+      liveAge.textContent = 'Fetching…';
+
+      try {
+        const orders = await fetchAllOrdersRaw();
+        _orderCache = orders;
+        _cacheTime = Date.now();
+
+        // Update live prices display
+        const highestBone = getHighestOrderPrice(orders, 'bone_block');
+        const highestKelp = getHighestOrderPrice(orders, 'dried_kelp_block');
+
+        document.getElementById('liveBone').textContent = highestBone > 0 ? fmtPrice(highestBone) : '—';
+        document.getElementById('liveKelp').textContent = highestKelp > 0 ? fmtPrice(highestKelp) : '—';
+
+        liveDot.className = 'live-dot active';
+        updateAge();
+      } catch (err) {
+        liveDot.className = 'live-dot error';
+        liveAge.textContent = 'Failed to fetch';
+        console.error('Price fetch error:', err);
+      } finally {
+        _isFetching = false;
+      }
+    }
+
+    function updateAge() {
+      if (!_cacheTime) return;
+      const ago = Math.floor((Date.now() - _cacheTime) / 1000);
+      if (ago < 60) liveAge.textContent = `Updated ${ago}s ago`;
+      else liveAge.textContent = `Updated ${Math.floor(ago / 60)}m ago`;
+    }
+
+    // Auto-refresh on load + every 30 min
+    refreshPrices();
+    setInterval(refreshPrices, CACHE_TTL);
+    setInterval(updateAge, 10000); // update age display every 10s
+
+    function getHighestOrderPrice(orders, itemId) {
+      let highest = 0;
+      for (const o of orders) {
+        if (o.item.itemId === itemId && o.itemPrice > highest) {
+          highest = o.itemPrice;
+        }
+      }
+      return highest;
+    }
+
+    // ─── Calculation ───
+    //
+    // Farm mechanics:
+    //   1 bone block  → 9 bone meal → 9 kelp (grown)
+    //   1 blaze rod   → smelts 12 kelp
+    //   9 dried kelp  → 1 dried kelp block
+    //
+    // Perfect balance: all kelp grown = all kelp smelted
+    //   9B = 12R  →  B/R = 4/3
+    //
+    // For B bone blocks and R blaze rods:
+    //   kelp produced = min(9B, 12R)
+    //   dried kelp blocks = floor(kelp produced / 9)
+    //
+    // We want: 9B = 12R  ⇒  R = 9B/12 = 3B/4
+    //
+    // Cost = B * bonePrice + R * blazePrice
+    // Budget = B * bonePrice + (3B/4) * blazePrice
+    // B = Budget / (bonePrice + 0.75 * blazePrice)
+    //
+    function calculate(budget, bonePrice, blazePrice, kelpPrice) {
+      const B = Math.floor(budget / (bonePrice + 0.75 * blazePrice));
+      const R = Math.floor((3 * B) / 4);
+
+      // Recalculate with discrete amounts
+      const totalCost = B * bonePrice + R * blazePrice;
+
+      const kelpGrown = 9 * B;
+      const kelpSmeltable = 12 * R;
+      const kelpProduced = Math.min(kelpGrown, kelpSmeltable);
+      const driedKelpBlocks = Math.floor(kelpProduced / 9);
+
+      const revenue = driedKelpBlocks * kelpPrice;
+      const profit = revenue - totalCost;
+
+      return { B, R, totalCost, kelpProduced, driedKelpBlocks, revenue, profit };
+    }
+
+    // ─── UI ───
+    const budgetInput = document.getElementById('budget');
+    const calcBtn = document.getElementById('calcBtn');
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+
+    calcBtn.addEventListener('click', run);
+    budgetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
+
+    async function run() {
+      // Parse budget
+      const budget = parseMoney(budgetInput.value);
+      if (isNaN(budget) || budget <= 0) {
+        statusEl.textContent = 'Please enter a valid budget.';
+        statusEl.className = 'status error';
+        return;
+      }
+
+      calcBtn.disabled = true;
+      resultsEl.classList.remove('visible');
+      statusEl.className = 'status';
+
+      try {
+        // Use cached orders
+        if (!_orderCache) {
+          statusEl.innerHTML = `<span class="spinner"></span> Waiting for price data…`;
+          await refreshPrices();
+        }
+        if (!_orderCache) throw new Error('Could not fetch market data. Try again.');
+
+        const orders = _orderCache;
+
+        statusEl.innerHTML = `<span class="spinner"></span> Crunching numbers…`;
+
+        // Prices
+        const highestBone = getHighestOrderPrice(orders, 'bone_block');
+        const highestKelp = getHighestOrderPrice(orders, 'dried_kelp_block');
+
+        if (highestBone === 0) throw new Error('No bone block orders found on the market.');
+        if (highestKelp === 0) throw new Error('No dried kelp block orders found on the market.');
+
+        const bonePrice = highestBone + 6.66;
+        const blazePrice = 156.66;
+        const kelpPrice = highestKelp;
+
+        // Calculate
+        const result = calculate(budget, bonePrice, blazePrice, kelpPrice);
+
+        if (result.B <= 0) throw new Error('Budget too low to purchase any materials.');
+
+        const SHULKER = 1728;
+        const boneShulkers = (result.B / SHULKER).toFixed(1);
+        const blazeShulkers = (result.R / SHULKER).toFixed(1);
+
+        // Bone Blocks
+        document.getElementById('boneRows').innerHTML = buildRows([
+          { label: 'Price', dot: '#60a5fa', value: fmtPrice(bonePrice) },
+          { label: 'Amount', dot: '#60a5fa', value: fmt(result.B) },
+          { label: 'Shulkers', dot: '#60a5fa', value: boneShulkers },
+          { label: 'Cost', dot: '#60a5fa', value: fmtPrice(result.B * bonePrice) },
+        ]);
+
+        // Blaze Rods
+        document.getElementById('blazeRows').innerHTML = buildRows([
+          { label: 'Price', dot: '#fb923c', value: fmtPrice(blazePrice) },
+          { label: 'Amount', dot: '#fb923c', value: fmt(result.R) },
+          { label: 'Shulkers', dot: '#fb923c', value: blazeShulkers },
+          { label: 'Cost', dot: '#fb923c', value: fmtPrice(result.R * blazePrice) },
+        ]);
+
+        // Dried Kelp Blocks
+        const kelpShulkers = (result.driedKelpBlocks / SHULKER).toFixed(1);
+        document.getElementById('kelpRows').innerHTML = buildRows([
+          { label: 'Sell Price', dot: '#4ade80', value: fmtPrice(kelpPrice) },
+          { label: 'Amount Produced', dot: '#4ade80', value: fmt(result.driedKelpBlocks) },
+          { label: 'Shulkers', dot: '#4ade80', value: kelpShulkers },
+          { label: 'Revenue', dot: '#4ade80', value: fmtPrice(result.revenue) },
+        ]);
+
+        // Revenue
+        const revenueAmtEl = document.getElementById('revenueAmount');
+        revenueAmtEl.textContent = fmtCompact(result.revenue);
+        revenueAmtEl.className = 'profit-amount positive';
+        document.getElementById('revenueSub').innerHTML =
+          `${fmt(result.driedKelpBlocks)} dried kelp blocks @ ${fmtPrice(kelpPrice)}`;
+
+        // Profit
+        const profitAmtEl = document.getElementById('profitAmount');
+        profitAmtEl.textContent = fmtCompact(result.profit);
+        profitAmtEl.className = 'profit-amount ' + (result.profit >= 0 ? 'positive' : 'negative');
+
+        const pctReturn = ((result.profit / result.totalCost) * 100).toFixed(1);
+        document.getElementById('profitSub').innerHTML =
+          `<span class="${result.profit >= 0 ? 'positive' : 'negative'}">${result.profit >= 0 ? '+' : ''}${pctReturn}% return</span> on ${fmtPrice(result.totalCost)} invested`;
+
+        // Show
+        resultsEl.classList.add('visible');
+        statusEl.textContent = '';
+
+      } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.className = 'status error';
+      } finally {
+        calcBtn.disabled = false;
+      }
+    }
+
+    function buildRows(items) {
+      return items.map(({ label, dot, value }) => `
+        <div class="summary-row">
+          <span class="summary-label">
+            <span class="dot" style="background:${dot}"></span>
+            ${label}
+          </span>
+          <span class="summary-value">${value}</span>
+        </div>
+      `).join('');
+    }
+  </script>
+
+</body>
+</html>
