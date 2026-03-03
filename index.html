@@ -456,6 +456,13 @@
       filter: invert(74%) sepia(60%) saturate(400%) hue-rotate(90deg) brightness(110%);
     }
 
+    .copy-check {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green);
+      line-height: 1;
+    }
+
     /* ── Override toggle ── */
     .override-toggle {
       display: flex;
@@ -971,8 +978,18 @@
 
     function copyVal(btn, text) {
       navigator.clipboard.writeText(text).then(() => {
+        const img = btn.querySelector('img');
+        img.style.display = 'none';
         btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 1500);
+        const check = document.createElement('span');
+        check.textContent = '✓';
+        check.className = 'copy-check';
+        btn.appendChild(check);
+        setTimeout(() => {
+          check.remove();
+          img.style.display = '';
+          btn.classList.remove('copied');
+        }, 1500);
       });
     }
   </script>
