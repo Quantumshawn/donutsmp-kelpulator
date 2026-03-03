@@ -456,10 +456,6 @@
   <div class="card">
     <div class="card-title">Configuration</div>
     <div class="field">
-      <label for="apiKey">API Key</label>
-      <input type="password" id="apiKey" placeholder="Get yours in-game with /api" autocomplete="off" />
-    </div>
-    <div class="field">
       <label for="budget">Budget</label>
       <input type="text" id="budget" placeholder="e.g. 100m, 648k, 2.45b" autocomplete="off" />
     </div>
@@ -565,24 +561,18 @@
       return sign + '$' + fmt(abs);
     }
 
-    // ─── API (official DonutSMP API) ───
-    // Uses api.donutsmp.net with Bearer token from /api in-game
+    // ─── API (donut.auction order book — no auth required) ───
+    // Fetches buy orders so we get the highest price players are willing to pay
     let _prices = null;       // { bone, kelp }
     let _cacheTime = 0;
     let _isFetching = false;
     let _fetchError = null;
     let _fetchPromise = null;
     const CACHE_TTL = 30 * 60 * 1000;
-    const KEY_STORE = 'kelpulator_apikey';
     const PRICE_STORE = 'kelpulator_prices';
 
     const liveDot = document.getElementById('liveDot');
     const liveAge = document.getElementById('liveAge');
-    const apiKeyInput = document.getElementById('apiKey');
-
-    // Restore saved API key
-    const savedKey = localStorage.getItem(KEY_STORE) || '';
-    if (savedKey) apiKeyInput.value = savedKey;
 
     // Restore cached prices
     try {
@@ -599,42 +589,30 @@
       }
     } catch (e) { /* ignore */ }
 
-    async function fetchItemPrice(apiKey, searchTerm) {
-      // Scan auction pages for the item, pick highest price listing
-      for (let page = 1; page <= 50; page++) {
-        const resp = await fetch(`https://api.donutsmp.net/v1/auction/list/${page}`, {
-          headers: { 'Authorization': `Bearer ${apiKey}` },
-        });
-        if (!resp.ok) {
-          if (resp.status === 401) throw new Error('Invalid API key. Get yours in-game with /api');
-          throw new Error(`API error ${resp.status}`);
-        }
+    // Fetch all orders from donut.auction and extract highest qualifying price for an item
+    async function fetchOrderPrice(itemId) {
+      let cursor = '';
+      let highest = 0;
+      const now = Date.now();
+      while (true) {
+        const resp = await fetch(`https://api.donut.auction/orders?cursor=${cursor}`);
+        if (!resp.ok) throw new Error(`API error ${resp.status}`);
         const data = await resp.json();
-        if (!data.result || data.result.length === 0) break;
-
-        let highest = 0;
-        for (const entry of data.result) {
-          if (entry.item?.id?.toLowerCase() === searchTerm) {
-            if (entry.price > highest) highest = entry.price;
-          }
+        for (const o of data.orders) {
+          if (o.item.itemId !== itemId) continue;
+          if (o.expirationDate && new Date(o.expirationDate).getTime() < now) continue;
+          const remaining = o.amountOrdered - o.amountDelivered;
+          if (remaining < 1000) continue;
+          if (o.itemPrice > highest) highest = o.itemPrice;
         }
-        if (highest > 0) return highest;
+        if (!data.nextCursor) break;
+        cursor = data.nextCursor;
       }
-      return 0;
+      return highest;
     }
 
     async function refreshPrices() {
       if (_isFetching) return _fetchPromise;
-
-      const apiKey = apiKeyInput.value.trim();
-      if (!apiKey) {
-        liveDot.className = 'live-dot error';
-        liveAge.textContent = 'No API key';
-        return Promise.resolve();
-      }
-
-      localStorage.setItem(KEY_STORE, apiKey);
-
       _isFetching = true;
       _fetchError = null;
       liveDot.className = 'live-dot fetching';
@@ -642,10 +620,10 @@
 
       _fetchPromise = (async () => {
         try {
-          liveAge.textContent = 'Fetching bone blocks…';
-          const bone = await fetchItemPrice(apiKey, 'bone_block');
-          liveAge.textContent = 'Fetching dried kelp…';
-          const kelp = await fetchItemPrice(apiKey, 'dried_kelp_block');
+          const [bone, kelp] = await Promise.all([
+            fetchOrderPrice('bone_block'),
+            fetchOrderPrice('dried_kelp_block'),
+          ]);
 
           _prices = { bone, kelp };
           _cacheTime = Date.now();
@@ -682,13 +660,9 @@
       else liveAge.textContent = `Updated ${Math.floor(ago / 60)}m ago`;
     }
 
-    // Auto-refresh when API key is entered and every 30 min
-    apiKeyInput.addEventListener('change', () => {
-      _prices = null;
-      if (apiKeyInput.value.trim()) refreshPrices();
-    });
-    if (savedKey) refreshPrices();
-    setInterval(() => { if (apiKeyInput.value.trim()) refreshPrices(); }, CACHE_TTL);
+    // Auto-refresh on load + every 30 min
+    refreshPrices();
+    setInterval(refreshPrices, CACHE_TTL);
     setInterval(updateAge, 10000);
 
     // ─── Calculation ───
@@ -752,9 +726,6 @@
       statusEl.className = 'status';
 
       try {
-        // Ensure we have an API key
-        if (!apiKeyInput.value.trim()) throw new Error('Please enter your API key (get it in-game with /api).');
-
         // If a fetch is in progress, wait for it. Otherwise start one if no cache.
         if (_isFetching) {
           statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
