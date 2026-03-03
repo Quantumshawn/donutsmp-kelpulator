@@ -566,10 +566,27 @@
     let _cacheTime = 0;
     let _isFetching = false;
     let _fetchError = null;
+    let _fetchPromise = null;
     const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+    const CACHE_KEY = 'kelpulator_cache';
 
     const liveDot = document.getElementById('liveDot');
     const liveAge = document.getElementById('liveAge');
+
+    // Load cache from localStorage on startup
+    try {
+      const saved = localStorage.getItem(CACHE_KEY);
+      if (saved) {
+        const { orders, time } = JSON.parse(saved);
+        if (Date.now() - time < CACHE_TTL) {
+          _orderCache = orders;
+          _cacheTime = time;
+          updateLivePrices(orders);
+          liveDot.className = 'live-dot active';
+          updateAge();
+        }
+      }
+    } catch (e) { /* ignore */ }
 
     async function fetchAllOrdersRaw() {
       const allOrders = [];
@@ -589,34 +606,45 @@
       return allOrders;
     }
 
+    function updateLivePrices(orders) {
+      const highestBone = getHighestOrderPrice(orders, 'bone_block');
+      const highestKelp = getHighestOrderPrice(orders, 'dried_kelp_block');
+      document.getElementById('liveBone').textContent = highestBone > 0 ? fmtPrice(highestBone) : '—';
+      document.getElementById('liveKelp').textContent = highestKelp > 0 ? fmtPrice(highestKelp) : '—';
+    }
+
     async function refreshPrices() {
-      if (_isFetching) return;
+      if (_isFetching) return _fetchPromise;
       _isFetching = true;
+      _fetchError = null;
       liveDot.className = 'live-dot fetching';
       liveAge.textContent = 'Fetching…';
 
-      try {
-        const orders = await fetchAllOrdersRaw();
-        _orderCache = orders;
-        _cacheTime = Date.now();
+      _fetchPromise = (async () => {
+        try {
+          const orders = await fetchAllOrdersRaw();
+          _orderCache = orders;
+          _cacheTime = Date.now();
 
-        // Update live prices display
-        const highestBone = getHighestOrderPrice(orders, 'bone_block');
-        const highestKelp = getHighestOrderPrice(orders, 'dried_kelp_block');
+          // Persist to localStorage so next page load uses cached data
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ orders, time: _cacheTime }));
+          } catch (e) { /* storage full, ignore */ }
 
-        document.getElementById('liveBone').textContent = highestBone > 0 ? fmtPrice(highestBone) : '—';
-        document.getElementById('liveKelp').textContent = highestKelp > 0 ? fmtPrice(highestKelp) : '—';
+          updateLivePrices(orders);
+          liveDot.className = 'live-dot active';
+          updateAge();
+        } catch (err) {
+          liveDot.className = 'live-dot error';
+          liveAge.textContent = 'Failed to fetch';
+          console.error('Price fetch error:', err);
+          _fetchError = err.message;
+        } finally {
+          _isFetching = false;
+        }
+      })();
 
-        liveDot.className = 'live-dot active';
-        updateAge();
-      } catch (err) {
-        liveDot.className = 'live-dot error';
-        liveAge.textContent = 'Failed to fetch';
-        console.error('Price fetch error:', err);
-        _fetchError = err.message;
-      } finally {
-        _isFetching = false;
-      }
+      return _fetchPromise;
     }
 
     function updateAge() {
@@ -706,9 +734,12 @@
       statusEl.className = 'status';
 
       try {
-        // Use cached orders
-        if (!_orderCache) {
-          statusEl.innerHTML = `<span class="spinner"></span> Waiting for price data…`;
+        // If a fetch is in progress, wait for it. Otherwise start one if no cache.
+        if (_isFetching) {
+          statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
+          await _fetchPromise;
+        } else if (!_orderCache) {
+          statusEl.innerHTML = `<span class="spinner"></span> Fetching market data…`;
           await refreshPrices();
         }
         if (!_orderCache) throw new Error(_fetchError ? `API error: ${_fetchError}` : 'Could not fetch market data. Try again.');
