@@ -632,10 +632,12 @@
     setInterval(updateAge, 10000); // update age display every 10s
 
     function getHighestOrderPrice(orders, itemId) {
+      // Use highest order with at least 1,000 quantity to avoid tiny outlier orders
       let highest = 0;
       for (const o of orders) {
         if (o.item.itemId === itemId && o.itemPrice > highest) {
-          highest = o.itemPrice;
+          const remaining = o.amountOrdered - o.amountDelivered;
+          if (remaining >= 1000) highest = o.itemPrice;
         }
       }
       return highest;
