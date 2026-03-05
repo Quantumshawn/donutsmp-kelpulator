@@ -4,7 +4,7 @@ A clean, single-page web calculator for optimizing kelp farm profitability on [D
 
 ## 🔗 Live Site
 
-**[donutsmp-kelpulator.vercel.app](https://donutsmp-kelpulator.vercel.app)**
+**[kelpulator.vercel.app](https://kelpulator.vercel.app)**
 
 ## ✨ Features
 
