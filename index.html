@@ -550,22 +550,108 @@
       margin-left: 4px;
     }
 
+    /* ── Progress bar ── */
+    .fetch-progress {
+      width: 100%;
+      max-width: 520px;
+      height: 3px;
+      background: var(--surface-3);
+      border-radius: 100px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .fetch-progress.visible {
+      opacity: 1;
+    }
+
+    .fetch-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+      border-radius: 100px;
+      transition: width 0.4s ease;
+    }
+
+    /* ── Refresh button ── */
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .refresh-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    .refresh-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .refresh-icon {
+      display: inline-block;
+      transition: transform 0.5s;
+    }
+
+    .refresh-icon.spinning {
+      animation: spin 0.8s linear infinite;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 560px) {
       body {
-        padding: 24px 16px 60px;
+        padding: 20px 12px 60px;
       }
       .card {
-        padding: 24px;
+        padding: 20px 16px;
+      }
+      .header {
+        margin-bottom: 28px;
       }
       .header h1 {
-        font-size: 28px;
+        font-size: 26px;
+      }
+      .header p {
+        font-size: 14px;
       }
       .prices-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+      }
+      .price-item {
+        padding: 10px 6px;
+      }
+      .price-item .item-icon {
+        font-size: 18px;
+      }
+      .price-item .item-price {
+        font-size: 14px;
+      }
+      .price-item .item-name {
+        font-size: 10px;
+      }
+      .profit-section {
+        padding: 20px 16px;
       }
       .profit-amount {
         font-size: 32px;
+      }
+      .summary-value {
+        font-size: 14px;
       }
     }
   </style>
@@ -606,12 +692,16 @@
     </div>
   </div>
 
+  <!-- Progress bar -->
+  <div class="fetch-progress" id="fetchProgress"><div class="fetch-progress-bar" id="fetchProgressBar"></div></div>
+
   <!-- Live Prices Bar -->
   <div class="card" id="livePricesCard">
     <div class="card-title">
       Live Prices
       <span class="live-dot" id="liveDot"></span>
       <span class="live-age" id="liveAge"></span>
+      <button class="refresh-btn" id="refreshBtn" title="Refresh prices"><span class="refresh-icon" id="refreshIcon">↻</span> Refresh</button>
     </div>
     <div class="prices-grid">
       <div class="price-item">
@@ -723,6 +813,30 @@
 
     const liveDot = document.getElementById('liveDot');
     const liveAge = document.getElementById('liveAge');
+    const fetchProgress = document.getElementById('fetchProgress');
+    const fetchProgressBar = document.getElementById('fetchProgressBar');
+
+    let _progressTimer = null;
+
+    function startProgress() {
+      fetchProgress.classList.add('visible');
+      fetchProgressBar.style.width = '0%';
+      let pct = 0;
+      _progressTimer = setInterval(() => {
+        // Ease toward 88% — never reaches 100% until done
+        pct += (88 - pct) * 0.04;
+        fetchProgressBar.style.width = pct + '%';
+      }, 200);
+    }
+
+    function finishProgress() {
+      clearInterval(_progressTimer);
+      fetchProgressBar.style.width = '100%';
+      setTimeout(() => {
+        fetchProgress.classList.remove('visible');
+        fetchProgressBar.style.width = '0%';
+      }, 400);
+    }
 
     // Restore cached prices
     try {
@@ -767,6 +881,11 @@
       _fetchError = null;
       liveDot.className = 'live-dot fetching';
       liveAge.textContent = 'Fetching…';
+      startProgress();
+
+      const refreshBtn = document.getElementById('refreshBtn');
+      const refreshIcon = document.getElementById('refreshIcon');
+      if (refreshBtn) { refreshBtn.disabled = true; refreshIcon.classList.add('spinning'); }
 
       _fetchPromise = (async () => {
         try {
@@ -792,6 +911,8 @@
           console.error(err);
         } finally {
           _isFetching = false;
+          finishProgress();
+          if (refreshBtn) { refreshBtn.disabled = false; refreshIcon.classList.remove('spinning'); }
         }
       })();
 
@@ -814,6 +935,12 @@
     refreshPrices();
     setInterval(refreshPrices, CACHE_TTL);
     setInterval(updateAge, 10000);
+
+    // Manual refresh button
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      _prices = null;
+      refreshPrices();
+    });
 
     // ─── Calculation ───
     //
