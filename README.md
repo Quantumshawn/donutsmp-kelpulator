@@ -9,12 +9,14 @@ A clean, single-page web calculator for optimizing kelp farm profitability on [D
 ## ✨ Features
 
 - **Live order prices** — fetches current buy order prices from [donut.auction](https://donut.auction) on page load, refreshes every 30 minutes, and caches to localStorage
+- **Manual refresh** — refresh button with animated progress bar to force a live price update at any time
 - **Optimal ratio calculator** — computes the perfect bone block to blaze rod ratio so no kelp goes unsmelted and no fuel is wasted
-- **Shulker counts** — shows how many shulkers of each item you'll produce
+- **Shulker counts** — shows how many shulkers of dried kelp blocks you'll produce
 - **Revenue & profit** — full breakdown of costs, revenue, and % return on investment
 - **Copy buttons** — copy amounts and prices directly (no commas, ready to paste in-game)
 - **Manual price override** — toggle on to enter your own prices for more accurate calculations
 - **Smart budget input** — supports abbreviations like `100m`, `648k`, `2.45b`
+- **Mobile-friendly** — fully responsive layout for phones and tablets
 
 ## 🧮 How It Works
 

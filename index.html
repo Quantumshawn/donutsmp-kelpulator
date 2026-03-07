@@ -750,7 +750,7 @@
     </div>
 
     <!-- Profit -->
-    <div class="profit-section visible-inline">
+    <div class="profit-section">
       <div class="profit-label">Estimated Revenue</div>
       <div class="profit-amount" id="revenueAmount">—</div>
       <div class="profit-sub" id="revenueSub"></div>
@@ -801,8 +801,7 @@
       return sign + '$' + fmt(abs);
     }
 
-    // ─── API (donut.auction order book — no auth required) ───
-    // Fetches buy orders so we get the highest price players are willing to pay
+    // ─── API ───
     let _prices = null;       // { bone, kelp }
     let _cacheTime = 0;
     let _isFetching = false;
@@ -943,25 +942,7 @@
     });
 
     // ─── Calculation ───
-    //
-    // Farm mechanics:
-    //   1 bone block  → 9 bone meal → 9 kelp (grown)
-    //   1 blaze rod   → smelts 12 kelp
-    //   9 dried kelp  → 1 dried kelp block
-    //
-    // Perfect balance: all kelp grown = all kelp smelted
-    //   9B = 12R  →  B/R = 4/3
-    //
-    // For B bone blocks and R blaze rods:
-    //   kelp produced = min(9B, 12R)
-    //   dried kelp blocks = floor(kelp produced / 9)
-    //
-    // We want: 9B = 12R  ⇒  R = 9B/12 = 3B/4
-    //
-    // Cost = B * bonePrice + R * blazePrice
-    // Budget = B * bonePrice + (3B/4) * blazePrice
-    // B = Budget / (bonePrice + 0.75 * blazePrice)
-    //
+    // Optimal ratio: 9B = 12R → B = budget / (bonePrice + 0.75 * blazePrice), R = floor(3B/4)
     function calculate(budget, bonePrice, blazePrice, kelpPrice) {
       const B = Math.floor(budget / (bonePrice + 0.75 * blazePrice));
       const R = Math.floor((3 * B) / 4);
