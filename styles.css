@@ -133,7 +133,7 @@ body {
 .live-age {
   font-size: 11px;
   font-weight: 400;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   letter-spacing: 0;
   text-transform: none;
   margin-left: auto;
@@ -294,7 +294,7 @@ body {
 
 .price-item .item-source {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -401,7 +401,7 @@ body {
   margin-top: 40px;
   text-align: center;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .attribution a {
@@ -416,7 +416,7 @@ body {
 .kofi-btn {
   display: inline-flex;
   align-items: center;
-  background: #ff5e5b;
+  background: #c0392b;
   color: #fff !important;
   font-size: 12px;
   font-weight: 600;
@@ -571,7 +571,7 @@ body {
   background: none;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 13px;
   font-family: inherit;
   padding: 4px 10px;
