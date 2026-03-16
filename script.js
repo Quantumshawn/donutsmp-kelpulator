@@ -125,11 +125,21 @@ async function refreshPrices() {
       } catch (e) { /* storage full */ }
 
       updateLivePrices(_prices);
-      liveDot.className = 'live-dot active';
-      updateAge();
+
+      const noOrders = bone === 0 && kelp === 0;
+      if (noOrders) {
+        liveDot.className = 'live-dot error';
+        liveAge.textContent = 'No orders found — enter prices manually';
+        // Auto-open the override panel so users can still calculate
+        setOverride(true);
+      } else {
+        liveDot.className = 'live-dot active';
+        updateAge();
+      }
     } catch (err) {
       liveDot.className = 'live-dot error';
-      liveAge.textContent = 'Failed';
+      liveAge.textContent = 'Fetch failed — enter prices manually';
+      setOverride(true);
       _fetchError = err.message;
       console.error(err);
     } finally {
@@ -143,8 +153,8 @@ async function refreshPrices() {
 }
 
 function updateLivePrices(prices) {
-  document.getElementById('liveBone').textContent = prices.bone > 0 ? fmtPrice(prices.bone) : '—';
-  document.getElementById('liveKelp').textContent = prices.kelp > 0 ? fmtPrice(prices.kelp) : '—';
+  document.getElementById('liveBone').textContent = prices.bone > 0 ? fmtPrice(prices.bone) : 'No orders';
+  document.getElementById('liveKelp').textContent = prices.kelp > 0 ? fmtPrice(prices.kelp) : 'No orders';
 }
 
 function updateAge() {
